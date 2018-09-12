@@ -37,19 +37,26 @@
 		<div class="panel panel-default">
 			<div class="panel-body">
 				<h2>Генератор</h2>
+				<pre><code class="current-gen"></code></pre>
 				<form action="./ajax.php" id="for-person-gen" target="_blank">
 					<input type="hidden" name="action" value="for_person_gen">
 					<div class="row">
-						<div class="col-sm-12 col-md-8">
+						<div class="col-sm-12 col-md-6">
 							<div class="form-group">
 								<label for="field-name">Персонаж:</label>
 								<select class="form-control" name="hash"></select>
 							</div>
 						</div>
-						<div class="col-sm-12 col-md-4">
+						<div class="col-sm-12 col-md-3">
 							<div class="form-group">
 								<label for="">&nbsp;</label>
-								<button type="submit" class="btn btn-primary form-control form-control-lg">Начать</button>
+								<button type="button" class="btn btn-primary form-control form-control-lg current-gen-btn">Генерировать</button>
+							</div>
+						</div>
+						<div class="col-sm-12 col-md-3">
+							<div class="form-group">
+								<label for="">&nbsp;</label>
+								<button type="submit" class="btn btn-primary form-control form-control-lg">Генерировать в файл</button>
 							</div>
 						</div>
 					</div>
@@ -75,7 +82,7 @@
 	<script id="person-tpl" type="html">
 		<div class="panel panel-default">
 			<div class="panel-heading">
-				<h4 class="panel-title person-name" data-toggle="collapse" data-parent="#accordion" href="#person-#HASH#">#NAME#</h4>
+				<h4 class="panel-title person-name" data-toggle="collapse" data-parent="#accordion" href="#person-#HASH#">#NAME# <span class="glyphicon glyphicon-remove pull-right btn-delete delete-person" data-hash="#HASH#"></span></h4>
 			</div>
 			<div id="person-#HASH#" class="panel-collapse collapse">
 				<div class="panel-body">
@@ -98,7 +105,7 @@
 									</div>
 								</div>
 							</form>
-							<div class="list">#CH_LIST#</div>
+							<div class="list" data-hash="#HASH#">#CH_LIST#</div>
 						</div>
 						<div class="col-xs-6">
 							<h4>Взаимодействие</h4>
@@ -118,7 +125,7 @@
 									</div>
 								</div>
 							</form>
-							<div class="list">#INTERACTION_LIST#</div>
+							<div class="list" data-hash="#HASH#">#INTERACTION_LIST#</div>
 						</div>
 					</div>
 				</div>
@@ -149,7 +156,46 @@
 				interaction_add($(this));
 			});
 			
+			$('body').on('click', '.interaction_form button', function(){
+				interaction_add($(this));
+			});
+
+			$('body').on('click', '.delete-person', function(){
+				del_person($(this));
+			});
+
+			$('body').on('click', '.delete-param', function(){
+				del_param($(this));
+			});
+
+			$('body').on('click', '.current-gen-btn', function(){
+				current_gen($(this));
+			});
 		});
+
+		var current_gen = function(target){
+			var hash = target.closest('form').find('select').val();
+			
+			$.ajax({
+				dataType: 'json',
+				method: 'GET',
+				url: './ajax.php',
+				data: {action: 'current_gen', hash: hash},
+				success: function(data)
+				{
+					if(data.result == false)
+					{
+						return show_error('Генерация неудалась');
+					}
+
+					$('code.current-gen').empty().html(data.data);
+				},
+				error: function(data)
+				{
+					return show_error('Ошибка генерации');
+				}
+			});
+		}
 
 		var person_add = function(target){
 			var val = target.closest('form').find('input[name="name"]').val();
@@ -204,10 +250,10 @@
 						tpl_item = tpl_item.replace(/#NAME#/g, e.name);
 						tpl_item = tpl_item.replace(/#HASH#/g, e.hash);
 
-						var ch = make_list(e.params.character);
+						var ch = make_list(e.params.character, 'ch');
 						tpl_item = tpl_item.replace(/#CH_LIST#/g, ch);
 
-						var inter = make_list(e.params.interaction);
+						var inter = make_list(e.params.interaction, 'interaction');
 						tpl_item = tpl_item.replace(/#INTERACTION_LIST#/g, inter);
 
 						container.append(tpl_item);
@@ -242,7 +288,7 @@
 						return show_error('Характер не добавлен');
 					}
 
-					form.parent().find('div.list').append(make_list([name.val()]));
+					form.parent().find('div.list').append(make_list([name.val()], 'ch'));
 					name.val('');
 				},
 				error: function(data)
@@ -269,7 +315,7 @@
 						return show_error('Взаимодействие не добавлено');
 					}
 
-					form.parent().find('div.list').append(make_list([name.val()]));
+					form.parent().find('div.list').append(make_list([name.val()], 'interaction'));
 					name.val('');
 				},
 				error: function(data)
@@ -279,13 +325,67 @@
 			});
 		}
 
-		var make_list = function(data){
+		var del_person = function(target){
+
+			var hash = target.data('hash');
+
+			$.ajax({
+				dataType: 'json',
+				method: 'GET',
+				url: './ajax.php',
+				data: {action: 'del_person', hash: hash},
+				success: function(data)
+				{
+					if(data.result == false)
+					{
+						return show_error('Персонаж не удален');
+					}
+
+					person_list(person_tpl);
+					//target.parent().parent().parent().remove();
+				},
+				error: function(data)
+				{
+					return show_error('Ошибка удаления персонажа');
+				}
+			});
+		}
+
+		var del_param = function(target){
+
+			var hash = target.closest('.list').data('hash');
+			var type = target.data('type');
+			var name = target.data('name');
+
+			$.ajax({
+				dataType: 'json',
+				method: 'GET',
+				url: './ajax.php',
+				data: {action: 'del_param', hash: hash, name: name, type: type},
+				success: function(data)
+				{
+					//console.log(hash);
+					if(data.result == false)
+					{
+						return show_error('Параметр не удален');
+					}
+
+					target.parent().remove();
+				},
+				error: function(data)
+				{
+					return show_error('Ошибка удаления параметра');
+				}
+			});
+		}
+
+		var make_list = function(data, type = ''){
 			var html = '';
 
 			if(data.length > 0)
 			{
 				data.forEach(function(e, i){
-					html += '<div>' + e + '</div>';
+					html += '<div>' + e + '<span class="glyphicon glyphicon-remove pull-right btn-delete delete-param" data-type="' + type + '" data-name="' + e + '"></span></div>';
 				});
 			}
 

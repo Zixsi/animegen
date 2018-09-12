@@ -24,6 +24,23 @@ switch($_GET['action'])
 		responce(interaction_add($_GET['hash'], $_GET['name']));
 	break;
 
+	case 'del_param':
+		responce(del_param($_GET['hash'], $_GET['name'], $_GET['type']));
+	break;
+
+	case 'del_person':
+		responce(person_del($_GET['hash']));
+	break;
+
+	case 'current_gen':
+		if($res = current_gen($_GET['hash']))
+		{
+			responce(true, $res);
+		}
+
+		responce(false);
+	break;
+
 	case 'for_person_gen':
 		if($res = gen($_GET['hash']))
 		{

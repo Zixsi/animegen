@@ -1,3 +1,4 @@
 .characters-list {}
 .characters-list .character-name {cursor: pointer;}
 
+span.btn-delete {cursor: pointer; color: #f00;}

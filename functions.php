@@ -204,7 +204,11 @@ function person_add($data)
 			$tpl = person_tpl();
 			$tpl['name'] = $data['name'];
 
-			return writeFile(DATADIR.$hash, json_encode($tpl));
+			if(writeFile(DATADIR.$hash, json_encode($tpl)))
+			{
+				chmod(DATADIR.$hash, '0777');
+				return true;
+			}
 		}
 	}
 
@@ -216,6 +220,16 @@ function person_save($hash, $data)
 	if(file_exists(DATADIR.$hash))
 	{
 		return writeFile(DATADIR.$hash, json_encode($data));
+	}
+
+	return false;
+}
+
+function person_del($hash)
+{
+	if(file_exists(DATADIR.$hash))
+	{
+		return unlink(DATADIR.$hash);
 	}
 
 	return false;
@@ -322,6 +336,25 @@ function gen($hash)
 	return false;
 }
 
+function current_gen($hash)
+{
+	if($item = person_get($hash))
+	{
+		if(count($item['params']['character']) && count($item['params']['interaction']))
+		{
+			$result = [];
+
+			$result[] = $item['params']['character'][array_rand($item['params']['character'])];
+			$result[] = $item['name'];
+			$result[] = $item['params']['interaction'][array_rand($item['params']['interaction'])];
+
+			return implode(" ", $result);
+		}
+	}
+
+	return false;
+}
+
 function make_download($data = [])
 {
 	header('Content-Type: text/csv; charset=utf-8');
@@ -332,4 +365,47 @@ function make_download($data = [])
 		fputcsv($output, $val, "\t");
 	}
 	die();
+}
+
+function del_param($hash, $name, $type)
+{
+	if($item = person_get($hash))
+	{
+		$key = null;
+
+		switch ($type)
+		{
+			case 'ch':
+				$key = 'character';
+			break;
+
+			case 'interaction':
+				$key = 'interaction';
+			break;
+			
+			default:
+				// empty
+			break;
+		}
+
+		if($key)
+		{
+			foreach($item['params'][$key] as $k => $val)
+			{
+				if($val == $name)
+				{
+					unset($item['params'][$key][$k]);
+				}
+			}
+
+			$item['params'][$key] = array_values($item['params'][$key]);
+
+			if(person_save($hash, $item))
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
 }
